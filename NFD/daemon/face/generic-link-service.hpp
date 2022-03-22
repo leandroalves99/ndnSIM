@@ -157,7 +157,8 @@ public:
      *
      *  To enable, set value of enableGeoTags option to a function that generates `shared_ptr<GeoTag>`
      */
-    std::function<std::shared_ptr<ndn::lp::GeoTag>()> enableGeoTags;
+    //std::function<std::shared_ptr<ndn::lp::GeoTag>()> enableGeoTags;
+    bool enableGeoTags = false;
   };
 
   /** \brief counters provided by GenericLinkService

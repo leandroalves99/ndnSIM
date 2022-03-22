@@ -26,6 +26,8 @@
 
 #include "ndn-cxx/lp/cache-policy.hpp"
 #include "ndn-cxx/lp/geo-tag.hpp"
+#include "ndn-cxx/lp/neighbor-tag.hpp"  //Include NeighborTag
+#include "ndn-cxx/lp/relay-tag.hpp"     //Include RelayTag
 #include "ndn-cxx/lp/nack-header.hpp"
 #include "ndn-cxx/lp/prefix-announcement-header.hpp"
 
@@ -128,6 +130,24 @@ typedef FieldDecl<field_location_tags::Header,
                   tlv::GeoTag> GeoTagField;
 BOOST_CONCEPT_ASSERT((Field<GeoTagField>));
 
+//Add Field for NeighborTag
+typedef FieldDecl<field_location_tags::Header,
+                  NeighborTag,
+                  tlv::NeighborTag> NeighborTagField;
+BOOST_CONCEPT_ASSERT((Field<NeighborTagField>));
+
+//Add Field for SelectedNeighborTagField
+typedef FieldDecl<field_location_tags::Header,
+                  uint64_t,
+                  tlv::SelectedNeighborTag> SelectedNeighborTagField;
+BOOST_CONCEPT_ASSERT((Field<SelectedNeighborTagField>));
+
+//Add Field for RelayTagField
+typedef FieldDecl<field_location_tags::Header,
+                  RelayTag,
+                  tlv::RelayTag> RelayTagField;
+BOOST_CONCEPT_ASSERT((Field<RelayTagField>));
+
 /** \brief Declare the Fragment field.
  *
  *  The fragment (i.e. payload) is the bytes between two provided iterators. During encoding,
@@ -156,7 +176,10 @@ typedef boost::mpl::set<
   NonDiscoveryField,
   PrefixAnnouncementField,
   HopCountTagField,
-  GeoTagField
+  GeoTagField,
+  NeighborTagField,
+  SelectedNeighborTagField,
+  RelayTagField
   > FieldSet;
 
 } // namespace lp

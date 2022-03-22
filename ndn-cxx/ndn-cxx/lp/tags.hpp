@@ -25,6 +25,8 @@
 #include "ndn-cxx/lp/cache-policy.hpp"
 #include "ndn-cxx/lp/empty-value.hpp"
 #include "ndn-cxx/lp/geo-tag.hpp"
+#include "ndn-cxx/lp/neighbor-tag.hpp"  //Include NeighborTag
+#include "ndn-cxx/lp/relay-tag.hpp"     //Include RelayTag
 #include "ndn-cxx/lp/prefix-announcement-header.hpp"
 #include "ndn-cxx/tag.hpp"
 
@@ -86,6 +88,27 @@ typedef SimpleTag<uint64_t, 0x60000000> HopCountTag;
  * This tag can be attached to Interest, Data, Nack.
  */
 class GeoTag; // 0x60000001, defined directly in geo-tag.hpp
+
+/** \class NeighborTag
+ *  \brief a packet tag for NeighborTag field
+ *
+ * This tag can be attached to Interest, Data.
+ */
+class NeighborTag; // 0x60000002, defined directly in neighbor-tag.hpp
+
+/** \class SelectedNeighborTag
+ *  \brief a packet tag for SelectedNeighborTag field
+ *
+ * This tag can be attached to Interest.
+ */
+typedef SimpleTag<uint64_t, 0x60000003> SelectedNeighborTag;
+
+/** \class RelayTag
+ *  \brief a packet tag for RelayTag field
+ *
+ * This tag can be attached to Interest.
+ */
+class RelayTag; // 0x60000004, defined directly in neighbor-tag.hpp
 
 } // namespace lp
 } // namespace ndn

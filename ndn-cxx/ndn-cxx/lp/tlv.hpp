@@ -38,6 +38,12 @@ enum {
   HopCountTag = 84,
   GeoTag = 85,
   GeoTagPos = 85, // inner fields inside GeoTag
+  NeighborTag = 90,
+  NeighborTagId = 90, // inner field (Neighbor ID) inside NeighborTag
+  NeighborTagPos = 90, // inner field (Neighbor Location) inside NeighborTag
+  RelayTag = 93,
+  RelayTagId = 93, // inner fields inside RelayTag
+  SelectedNeighborTag = 96,
   PitToken = 98,
   Nack = 800,
   NackReason = 801,

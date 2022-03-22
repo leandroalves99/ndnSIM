@@ -163,10 +163,30 @@ GenericLinkService::encodeLpFields(const ndn::PacketBase& netPkt, lp::Packet& lp
     lpPacket.add<lp::HopCountTagField>(0);
   }
 
+  //Enabled tags 
   if (m_options.enableGeoTags) {
-    auto geoTag = m_options.enableGeoTags();
+    //GeoTag corresponds to the Producer Location in CustomApp2 Interests packets
+    shared_ptr<lp::GeoTag> geoTag = netPkt.getTag<lp::GeoTag>();
     if (geoTag != nullptr) {
       lpPacket.add<lp::GeoTagField>(*geoTag);
+    }
+
+    //NeighborTag corresponds to the field <Node ID, Node Location> in NeighborDiscoveryApp Data packets
+    shared_ptr<lp::NeighborTag> neighborTag = netPkt.getTag<lp::NeighborTag>();
+    if (neighborTag != nullptr) {
+      lpPacket.add<lp::NeighborTagField>(*neighborTag);
+    }
+
+    //SelectedNeighborTag corresponds to the ID of best neighbor (replaced later by RelayTag)
+    shared_ptr<lp::SelectedNeighborTag> selNeighborTag = netPkt.getTag<lp::SelectedNeighborTag>();
+    if (selNeighborTag != nullptr) {
+      lpPacket.add<lp::SelectedNeighborTagField>(*selNeighborTag);
+    }
+
+    //RelayTag corresponds to the list of IDs of best neighbors
+    shared_ptr<lp::RelayTag> relaysTag = netPkt.getTag<lp::RelayTag>();
+    if (relaysTag != nullptr) {
+      lpPacket.add<lp::RelayTagField>(*relaysTag);
     }
   }
 }
@@ -368,6 +388,18 @@ GenericLinkService::decodeInterest(const Block& netPkt, const lp::Packet& firstP
     interest->setTag(make_shared<lp::GeoTag>(firstPkt.get<lp::GeoTagField>()));
   }
 
+  if (m_options.enableGeoTags && firstPkt.has<lp::NeighborTagField>()) {
+    interest->setTag(make_shared<lp::NeighborTag>(firstPkt.get<lp::NeighborTagField>()));
+  }
+
+  if (firstPkt.has<lp::SelectedNeighborTagField>()) {
+    interest->setTag(make_shared<lp::SelectedNeighborTag>(firstPkt.get<lp::SelectedNeighborTagField>()));
+  }
+  
+  if (firstPkt.has<lp::RelayTagField>()) {
+    interest->setTag(make_shared<lp::RelayTag>(firstPkt.get<lp::RelayTagField>()));
+  }
+
   if (firstPkt.has<lp::NextHopFaceIdField>()) {
     if (m_options.allowLocalFields) {
       interest->setTag(make_shared<lp::NextHopFaceIdTag>(firstPkt.get<lp::NextHopFaceIdField>()));
@@ -429,6 +461,10 @@ GenericLinkService::decodeData(const Block& netPkt, const lp::Packet& firstPkt,
 
   if (m_options.enableGeoTags && firstPkt.has<lp::GeoTagField>()) {
     data->setTag(make_shared<lp::GeoTag>(firstPkt.get<lp::GeoTagField>()));
+  }
+
+  if (m_options.enableGeoTags && firstPkt.has<lp::NeighborTagField>()) {
+    data->setTag(make_shared<lp::NeighborTag>(firstPkt.get<lp::NeighborTagField>()));
   }
 
   if (firstPkt.has<lp::NackField>()) {
