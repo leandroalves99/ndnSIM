@@ -360,6 +360,13 @@ protected: // accessors
     return m_forwarder.m_faceTable;
   }
 
+  //Method to get Neighbor Table
+  NeighborTable&
+  getNit()
+  {
+    return m_forwarder.m_nit;
+  }
+
 protected: // instance name
   struct ParsedInstanceName
   {

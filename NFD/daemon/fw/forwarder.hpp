@@ -37,6 +37,7 @@
 #include "table/strategy-choice.hpp"
 #include "table/dead-nonce-list.hpp"
 #include "table/network-region-table.hpp"
+#include "table/neighbor-table.hpp"       //Include Neighbor table
 
 namespace nfd {
 
@@ -141,6 +142,13 @@ public: // forwarding entrypoints and tables
     return m_cs;
   }
 
+  //Method to get Neighbor Table
+  NeighborTable&
+  getNit()
+  {
+    return m_nit;
+  }
+
   Measurements&
   getMeasurements()
   {
@@ -164,6 +172,9 @@ public: // forwarding entrypoints and tables
   {
     return m_networkRegionTable;
   }
+
+  virtual void
+  SendDataWithDelay(const Data& data, const FaceEndpoint& egress);
 
 public:
   /** \brief trigger before PIT entry is satisfied
@@ -287,6 +298,7 @@ private:
   Fib                m_fib;
   Pit                m_pit;
   Cs                 m_cs;
+  NeighborTable      m_nit;       //Neighbor Table
   Measurements       m_measurements;
   StrategyChoice     m_strategyChoice;
   DeadNonceList      m_deadNonceList;

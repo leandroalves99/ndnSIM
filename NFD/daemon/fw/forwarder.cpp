@@ -36,7 +36,28 @@
 
 #include "face/null-face.hpp"
 
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/mobility-module.h"
+
 namespace nfd {
+
+enum INTEREST_TYPE { NEIGHBOR, DATA };
+std::string
+isType(int v){
+  switch (v)
+  {
+  case NEIGHBOR:
+    return "/neighbor";
+    break;
+  case DATA:
+    return "/data";
+    break;
+  default:
+    break;
+  }
+  return "default";
+}
 
 NFD_LOG_INIT(Forwarder);
 
@@ -51,6 +72,7 @@ Forwarder::Forwarder(FaceTable& faceTable)
   , m_unsolicitedDataPolicy(make_unique<fw::DefaultUnsolicitedDataPolicy>())
   , m_fib(m_nameTree)
   , m_pit(m_nameTree)
+  , m_nit()
   , m_measurements(m_nameTree)
   , m_strategyChoice(*this)
   , m_csFace(face::makeNullFace(FaceUri("contentstore://")))
@@ -97,6 +119,17 @@ Forwarder::onIncomingInterest(const FaceEndpoint& ingress, const Interest& inter
   interest.setTag(make_shared<lp::IncomingFaceIdTag>(ingress.face.getId()));
   ++m_counters.nInInterests;
 
+  // drop if HopLimit zero, decrement otherwise (if present)
+  if (interest.getHopLimit()) {
+    if (*interest.getHopLimit() < 1) {
+      NFD_LOG_DEBUG("onIncomingInterest in=" << ingress << " interest=" << interest.getName()
+                    << " hop-limit=0");
+      return;
+    }
+
+    const_cast<Interest&>(interest).setHopLimit(*interest.getHopLimit() - 1);
+  }
+
   // /localhost scope control
   bool isViolatingLocalhost = ingress.face.getScope() == ndn::nfd::FACE_SCOPE_NON_LOCAL &&
                               scope_prefix::LOCALHOST.isPrefixOf(interest.getName());
@@ -140,7 +173,17 @@ Forwarder::onIncomingInterest(const FaceEndpoint& ingress, const Interest& inter
       [&] (fw::Strategy& strategy) { strategy.afterReceiveLoopedInterest(ingress, interest, *pitEntry); });
     return;
   }
-
+  
+  // if(interest.getName().getPrefix(1).compare("/parkinglot1") == 0) {
+  //   auto node = ns3::NodeList::GetNode(ns3::Simulator::GetContext());
+  //   auto producer = ns3::NodeList::GetNode(ns3::NodeList::GetNNodes() - 2);
+  //   double distance = node->GetObject<ns3::MobilityModel> ()->GetDistanceFrom(producer->GetObject<ns3::MobilityModel> ());
+  //   if(distance >= 200.0){
+  //     NFD_LOG_DEBUG("onIncomingInterest distance=" << distance << " too big to send data");
+  //     //(drop)
+  //     return;
+  //   }
+  // }
   // is pending?
   if (!pitEntry->hasInRecords()) {
     m_cs.find(interest,
@@ -189,6 +232,7 @@ Forwarder::onContentStoreMiss(const FaceEndpoint& ingress,
                                          return a.getExpiry() < b.getExpiry();
                                        });
   auto lastExpiryFromNow = lastExpiring->getExpiry() - time::steady_clock::now();
+  NFD_LOG_DEBUG("onContentStoreMiss pitEntry expires in " << time::duration_cast<time::milliseconds>(lastExpiryFromNow - time::milliseconds(100)));
   this->setExpiryTimer(pitEntry, time::duration_cast<time::milliseconds>(lastExpiryFromNow));
 
   // has NextHopFaceId?
@@ -205,7 +249,7 @@ Forwarder::onContentStoreMiss(const FaceEndpoint& ingress,
     }
     return;
   }
-
+  
   // dispatch to strategy: after incoming Interest
   this->dispatchToStrategy(*pitEntry,
     [&] (fw::Strategy& strategy) {
@@ -258,25 +302,30 @@ Forwarder::onInterestFinalize(const shared_ptr<pit::Entry>& pitEntry)
 {
   NFD_LOG_DEBUG("onInterestFinalize interest=" << pitEntry->getName()
                 << (pitEntry->isSatisfied ? " satisfied" : " unsatisfied"));
+  NFD_LOG_DEBUG("onInterestFinalize interest=" << pitEntry->getName() << (m_nit.getRejectInterest() ? " dropped" : " proceed forwarding"));
 
-  if (!pitEntry->isSatisfied) {
-    beforeExpirePendingInterest(*pitEntry);
+  //if interest is not to drop then proceed
+  if(!m_nit.getRejectInterest()){
+
+    if (!pitEntry->isSatisfied) {
+      beforeExpirePendingInterest(*pitEntry);
+    }
+
+    // Dead Nonce List insert if necessary
+    this->insertDeadNonceList(*pitEntry, nullptr);
+
+    // Increment satisfied/unsatisfied Interests counter
+    if (pitEntry->isSatisfied) {
+      ++m_counters.nSatisfiedInterests;
+    }
+    else {
+      ++m_counters.nUnsatisfiedInterests;
+    }
   }
-
-  // Dead Nonce List insert if necessary
-  this->insertDeadNonceList(*pitEntry, nullptr);
-
-  // Increment satisfied/unsatisfied Interests counter
-  if (pitEntry->isSatisfied) {
-    ++m_counters.nSatisfiedInterests;
-  }
-  else {
-    ++m_counters.nUnsatisfiedInterests;
-  }
-
-  // PIT delete
+  //if interest is to drop, delete pit entry
   pitEntry->expiryTimer.cancel();
   m_pit.erase(pitEntry.get());
+  m_nit.setRejectInterest(false); //reset rejectInterest for next interest
 }
 
 void
@@ -304,8 +353,26 @@ Forwarder::onIncomingData(const FaceEndpoint& ingress, const Data& data)
     return;
   }
 
-  // CS insert
-  m_cs.insert(data);
+  //MODIFIED data from App is retransmited directly to outside
+  //has NextHopFaceId?
+  // auto nextHopTag = data.getTag<lp::NextHopFaceIdTag>();
+  // if (nextHopTag != nullptr) {
+  //   //chosen NextHop face exists?
+  //   Face* nextHopFace = m_faceTable.get(*nextHopTag);
+  //   if (nextHopFace != nullptr) {
+  //     NFD_LOG_DEBUG("onIncomingData data=" << data.getName()
+  //                   << " nexthop-faceid=" << nextHopFace->getId());
+  //     // go to outgoing Data pipeline
+  //     // scope control is unnecessary, because privileged app explicitly wants to forward
+    
+  //     this->onOutgoingData(data, FaceEndpoint(*nextHopFace, 0));
+  //   }
+  //   return;
+  // }
+
+  // CS insert only if is not /neighbor
+  if(!(data.getName().getPrefix(1).compare(isType(NEIGHBOR)) == 0))
+    m_cs.insert(data);
 
   // when only one PIT entry is matched, trigger strategy: after receive Data
   if (pitMatches.size() == 1) {
@@ -334,6 +401,7 @@ Forwarder::onIncomingData(const FaceEndpoint& ingress, const Data& data)
   // when more than one PIT entry is matched, trigger strategy: before satisfy Interest,
   // and send Data to all matched out faces
   else {
+    std::cout << "Multiple PIT Matches" << std::endl;
     std::set<std::pair<Face*, EndpointId>> pendingDownstreams;
     auto now = time::steady_clock::now();
 
@@ -400,7 +468,7 @@ Forwarder::onOutgoingData(const Data& data, const FaceEndpoint& egress)
     NFD_LOG_WARN("onOutgoingData out=(invalid) data=" << data.getName());
     return;
   }
-  NFD_LOG_DEBUG("onOutgoingData out=" << egress << " data=" << data.getName());
+  //NFD_LOG_DEBUG("onOutgoingData out=" << egress << " data=" << data.getName());
 
   // /localhost scope control
   bool isViolatingLocalhost = egress.face.getScope() == ndn::nfd::FACE_SCOPE_NON_LOCAL &&
@@ -413,8 +481,26 @@ Forwarder::onOutgoingData(const Data& data, const FaceEndpoint& egress)
 
   // TODO traffic manager
 
+  if (egress.face.getLinkType() != ndn::nfd::LINK_TYPE_POINT_TO_POINT){
+    double x = ((double)std::rand()) / ((double)RAND_MAX) * 0.05;
+    //std::cout << "Random delay: " << x << std::endl;
+    ns3::Simulator::Schedule(ns3::Seconds(x), &Forwarder::SendDataWithDelay, this, data, egress);
+  }else {
+    egress.face.sendData(data, egress.endpoint);
+    ++m_counters.nOutData;
+  }
+
   // send Data
+  //egress.face.sendData(data, egress.endpoint);
+  //++m_counters.nOutData;
+}
+
+void
+Forwarder::SendDataWithDelay(const Data& data, const FaceEndpoint& egress){
+  NFD_LOG_DEBUG("onOutgoingData out=" << egress << " data=" << data.getName());
+  //std::cout << "before sendData" << std::endl;
   egress.face.sendData(data, egress.endpoint);
+  //std::cout << "after sendData" << std::endl;
   ++m_counters.nOutData;
 }
 
@@ -571,7 +657,7 @@ Forwarder::setExpiryTimer(const shared_ptr<pit::Entry>& pitEntry, time::millisec
 {
   BOOST_ASSERT(pitEntry);
   BOOST_ASSERT(duration >= 0_ms);
-
+  
   pitEntry->expiryTimer.cancel();
   pitEntry->expiryTimer = getScheduler().schedule(duration, [=] { onInterestFinalize(pitEntry); });
 }
