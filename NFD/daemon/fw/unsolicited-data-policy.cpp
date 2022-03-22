@@ -108,5 +108,18 @@ AdmitAllUnsolicitedDataPolicy::decide(const Face& inFace, const Data& data) cons
   return UnsolicitedDataDecision::CACHE;
 }
 
+const std::string AdmitInfoUnsolicitedDataPolicy::POLICY_NAME("admit-info");
+NFD_REGISTER_UNSOLICITED_DATA_POLICY(AdmitInfoUnsolicitedDataPolicy);
+
+UnsolicitedDataDecision
+AdmitInfoUnsolicitedDataPolicy::decide(const Face& inFace, const Data& data) const
+{
+  std::string prefixName = data.getName().getPrefix(1).toUri();
+  if (!(prefixName.compare("/neighbor") == 0)){
+    return UnsolicitedDataDecision::CACHE;
+  }
+  return UnsolicitedDataDecision::DROP;
+}
+
 } // namespace fw
 } // namespace nfd

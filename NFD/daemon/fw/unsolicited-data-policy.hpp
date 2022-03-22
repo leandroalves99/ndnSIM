@@ -87,7 +87,7 @@ private:
 
 /** \brief drops all unsolicited Data
  */
-class DropAllUnsolicitedDataPolicy : public UnsolicitedDataPolicy
+class DropAllUnsolicitedDataPolicy : public UnsolicitedDataPolicy 
 {
 public:
   UnsolicitedDataDecision
@@ -133,9 +133,21 @@ public:
   static const std::string POLICY_NAME;
 };
 
+/** \brief admits only neighbors information unsolicited Data
+ */
+class AdmitInfoUnsolicitedDataPolicy : public UnsolicitedDataPolicy
+{
+public:
+  UnsolicitedDataDecision
+  decide(const Face& inFace, const Data& data) const final;
+
+public:
+  static const std::string POLICY_NAME;
+};
+
 /** \brief the default UnsolicitedDataPolicy
  */
-typedef DropAllUnsolicitedDataPolicy DefaultUnsolicitedDataPolicy;
+typedef AdmitInfoUnsolicitedDataPolicy DefaultUnsolicitedDataPolicy;   //Change between AdmitAll and AdmitInfo
 
 } // namespace fw
 } // namespace nfd
