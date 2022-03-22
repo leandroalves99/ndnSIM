@@ -158,7 +158,7 @@ public:
      *  To enable, set value of enableGeoTags option to a function that generates `shared_ptr<GeoTag>`
      */
     //std::function<std::shared_ptr<ndn::lp::GeoTag>()> enableGeoTags;
-    bool enableGeoTags = true;
+    bool enableGeoTags = false; //This is enabled by ndn-stack-helper when face is created and registered
   };
 
   /** \brief counters provided by GenericLinkService

@@ -242,7 +242,8 @@ StackHelper::DefaultNetDeviceCallback(Ptr<Node> node, Ptr<L3Protocol> ndn,
   opts.allowFragmentation = true;
   opts.allowReassembly = true;
   opts.allowCongestionMarking = true;
-
+  opts.enableGeoTags = true;
+  
   auto linkService = make_unique<::nfd::face::GenericLinkService>(opts);
 
   auto transport = make_unique<NetDeviceTransport>(node, netDevice,
