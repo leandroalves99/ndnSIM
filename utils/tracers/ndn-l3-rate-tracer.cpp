@@ -108,7 +108,7 @@ L3RateTracer::Install(const NodeContainer& nodes, const std::string& file,
     Ptr<L3RateTracer> trace = Install(*node, outputStream, averagingPeriod);
     tracers.push_back(trace);
   }
-
+  
   if (tracers.size() > 0) {
     // *m_l3RateTrace << "# "; // not necessary for R's read.table
     tracers.front()->PrintHeader(*outputStream);
@@ -296,45 +296,53 @@ L3RateTracer::Print(std::ostream& os) const
 void
 L3RateTracer::OutInterests(const Interest& interest, const Face& face)
 {
-  AddInfo(face);
-  std::get<0>(m_stats[face.getId()]).m_outInterests++;
-  if (interest.hasWire()) {
-    std::get<1>(m_stats[face.getId()]).m_outInterests +=
-      interest.wireEncode().size();
+  if (CheckName(interest.getName())) {
+    AddInfo(face);
+    std::get<0>(m_stats[face.getId()]).m_outInterests++;
+    if (interest.hasWire()) {
+      std::get<1>(m_stats[face.getId()]).m_outInterests +=
+        interest.wireEncode().size();
+    }
   }
 }
 
 void
 L3RateTracer::InInterests(const Interest& interest, const Face& face)
 {
-  AddInfo(face);
-  std::get<0>(m_stats[face.getId()]).m_inInterests++;
-  if (interest.hasWire()) {
-    std::get<1>(m_stats[face.getId()]).m_inInterests +=
-      interest.wireEncode().size();
+  if (CheckName(interest.getName())) {
+    AddInfo(face);
+    std::get<0>(m_stats[face.getId()]).m_inInterests++;
+    if (interest.hasWire()) {
+      std::get<1>(m_stats[face.getId()]).m_inInterests +=
+        interest.wireEncode().size();
+    }
   }
 }
 
 void
 L3RateTracer::OutData(const Data& data, const Face& face)
 {
-  AddInfo(face);
-  std::get<0>(m_stats[face.getId()]).m_outData++;
-  if (data.hasWire()) {
-    std::get<1>(m_stats[face.getId()]).m_outData +=
-      data.wireEncode().size();
+  if (CheckName(data.getName())) {
+    AddInfo(face);
+    std::get<0>(m_stats[face.getId()]).m_outData++;
+    if (data.hasWire()) {
+      std::get<1>(m_stats[face.getId()]).m_outData +=
+        data.wireEncode().size();
+    }
   }
 }
 
 void
 L3RateTracer::InData(const Data& data, const Face& face)
 {
-  AddInfo(face);
-  std::get<0>(m_stats[face.getId()]).m_inData++;
-  if (data.hasWire()) {
-    std::get<1>(m_stats[face.getId()]).m_inData +=
-      data.wireEncode().size();
-  }
+  if (CheckName(data.getName())) {
+    AddInfo(face);
+    std::get<0>(m_stats[face.getId()]).m_inData++;
+    if (data.hasWire()) {
+      std::get<1>(m_stats[face.getId()]).m_inData +=
+        data.wireEncode().size();
+    }
+  } 
 }
 
 void
@@ -362,34 +370,38 @@ L3RateTracer::InNack(const lp::Nack& nack, const Face& face)
 void
 L3RateTracer::SatisfiedInterests(const nfd::pit::Entry& entry, const Face&, const Data&)
 {
-  std::get<0>(m_stats[nfd::face::INVALID_FACEID]).m_satisfiedInterests++;
-  // no "size" stats
+  if (CheckName(entry.getName())) {
+    std::get<0>(m_stats[nfd::face::INVALID_FACEID]).m_satisfiedInterests++;
+    // no "size" stats
 
-  for (const auto& in : entry.getInRecords()) {
-    AddInfo(in.getFace());
-    std::get<0>(m_stats[(in.getFace()).getId()]).m_satisfiedInterests ++;
-  }
+    for (const auto& in : entry.getInRecords()) {
+      AddInfo(in.getFace());
+      std::get<0>(m_stats[(in.getFace()).getId()]).m_satisfiedInterests ++;
+    }
 
-  for (const auto& out : entry.getOutRecords()) {
-    AddInfo(out.getFace());
-    std::get<0>(m_stats[(out.getFace()).getId()]).m_outSatisfiedInterests ++;
+    for (const auto& out : entry.getOutRecords()) {
+      AddInfo(out.getFace());
+      std::get<0>(m_stats[(out.getFace()).getId()]).m_outSatisfiedInterests ++;
+    }
   }
 }
 
 void
 L3RateTracer::TimedOutInterests(const nfd::pit::Entry& entry)
 {
-  std::get<0>(m_stats[nfd::face::INVALID_FACEID]).m_timedOutInterests++;
-  // no "size" stats
+  if (CheckName(entry.getName())) {
+    std::get<0>(m_stats[nfd::face::INVALID_FACEID]).m_timedOutInterests++;
+    // no "size" stats
 
-  for (const auto& in : entry.getInRecords()) {
-    AddInfo(in.getFace());
-    std::get<0>(m_stats[(in.getFace()).getId()]).m_timedOutInterests++;
-  }
+    for (const auto& in : entry.getInRecords()) {
+      AddInfo(in.getFace());
+      std::get<0>(m_stats[(in.getFace()).getId()]).m_timedOutInterests++;
+    }
 
-  for (const auto& out : entry.getOutRecords()) {
-    AddInfo(out.getFace());
-    std::get<0>(m_stats[(out.getFace()).getId()]).m_outTimedOutInterests++;
+    for (const auto& out : entry.getOutRecords()) {
+      AddInfo(out.getFace());
+      std::get<0>(m_stats[(out.getFace()).getId()]).m_outTimedOutInterests++;
+    }
   }
 }
 
@@ -399,6 +411,12 @@ L3RateTracer::AddInfo(const Face& face)
   if (m_faceInfos.find(face.getId()) == m_faceInfos.end()) {
     m_faceInfos.insert(make_pair(face.getId(), boost::lexical_cast<std::string>(face.getLocalUri())));
   }
+}
+
+bool
+L3RateTracer::CheckName(const Name& name){
+    return (( name.getPrefix(1).compare("/parkinglot1") == 0 ) ||
+            ( name.getPrefix(1).compare("/parkinglot2") == 0 ));
 }
 
 } // namespace ndn

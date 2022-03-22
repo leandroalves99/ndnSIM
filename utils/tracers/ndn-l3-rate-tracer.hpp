@@ -164,6 +164,9 @@ private:
   void
   AddInfo(const Face& face);
 
+  bool
+  CheckName(const Name& name);  //Method to verify Interests/Data names
+
 private:
   shared_ptr<std::ostream> m_os;
   Time m_period;
