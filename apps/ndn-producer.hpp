@@ -59,6 +59,9 @@ protected:
   virtual void
   StopApplication(); // Called at time specified by Stop
 
+  virtual void
+  SendDataWithDelay(std::shared_ptr<const ndn::Data> data); //Called to delay the dispatch of packets
+
 private:
   Name m_prefix;
   Name m_postfix;

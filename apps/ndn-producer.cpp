@@ -128,6 +128,17 @@ Producer::OnInterest(shared_ptr<const Interest> interest)
   data->wireEncode();
 
   m_transmittedDatas(data, this, m_face);
+
+  double x = ((double)std::rand()) / ((double)RAND_MAX) * 0.05;
+  Simulator::Schedule(MilliSeconds(100 + x*100), &Producer::SendDataWithDelay, this, data);
+
+  //m_appLink->onReceiveData(*data);
+}
+
+void
+Producer::SendDataWithDelay(std::shared_ptr<const ndn::Data> data){
+  NS_LOG_DEBUG("Sending Data packet for " << data->getName());
+
   m_appLink->onReceiveData(*data);
 }
 
